@@ -1,4 +1,4 @@
-# Readme
+# Contributing to the Observability Workshop
 
 When working on the workshop, we advise that you review your changes locally before committing them. Use the `mkdocs serve` command to live preview your changes (as you type) on your local machine.
 
@@ -27,6 +27,14 @@ mkdocs serve -a 0.0.0.0:8123
 ```
 
 The documentation built from your current branch is then accessible through your favorite browser at <http://localhost:8123>.
+
+## Optimising images
+
+Install `optipng` e.g. `brew install optipng` and then run the following command in the `docs/images` directory:
+
+```bash
+find . -type f -iname "*.png" -exec optipng -nb -nc {} \;
+```
 
 ## How to create a new tagged release
 

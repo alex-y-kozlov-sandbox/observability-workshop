@@ -5,14 +5,15 @@ site_description: >-
   This workshop is going to take you through the best-in-class observability platform
   for ingesting, monitoring, visualizing and analyzing metrics, traces and spans
 
+repo_name: signalfx/observability-workshop
 repo_url: https://github.com/signalfx/observability-workshop/
 edit_uri: ""
-copyright: Copyright &copy; 2021 Splunk Inc. All rights reserved.
+copyright: Copyright &copy; 2022 Splunk Inc. All rights reserved.
 remote_branch: gh-pages
 
 theme:
   name: material
-  custom_dir: overrides
+  custom_dir: !ENV [THEME_DIR, "overrides"]
   palette:
     # Light mode
     - media: "(prefers-color-scheme: light)"
@@ -35,8 +36,9 @@ theme:
   search_index_only: true
   language: en
   features:
+    - content.code.annotate
+    - navigation.indexes
     - navigation.tabs
-    - navigation.instant
     - navigation.sections
     - navigation.expand
     - navigation.top
@@ -46,8 +48,13 @@ markdown_extensions:
   - footnotes
   - admonition
   - attr_list
-  - pymdownx.tabbed
-  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight
   - pymdownx.inlinehilite
   - pymdownx.mark
@@ -76,18 +83,16 @@ extra:
   alternate:
     # Switch to English
     - name: English
-      link: https://signalfx.github.io/observability-workshop/latest/en/
+      link: ./en/
       lang: en
     # Switch to Japanese
     - name: 日本語
-      link: https://signalfx.github.io/observability-workshop/latest/ja/
+      link: ./ja/
       lang: ja
 
 plugins:
   - git-revision-date-localized:
       type: date
-  - minify:
-      minify_html: false
   - i18n:
       default_language: en
       languages:
@@ -127,14 +132,15 @@ plugins:
 nav:
   - Home: index.md
   - Splunk IMT:
-    - Workshop Introduction: otel/index.md
+    - Workshop Introduction: otel/intro.md
+    - User Interface Overview: otel/ui.md
     - Initial Setup<br /><small>5 minutes</small>:
       - Access AWS/EC2 instance: otel/connect-info.md
     - Get Data In<br /><small>15 minutes</small>:
       - Deploy the OTel Collector: otel/k3s.md
       - Deploy and monitor NGINX : otel/nginx.md
     - Dashboards<br /><small>20 minutes</small>:
-      - Introduction: dashboards/index.md
+      - Introduction: dashboards/intro.md
       - Editing charts: dashboards/editing.md
       - Saving charts: dashboards/savingcharts.md
       - Using filters & formulas: dashboards/filtering.md
@@ -142,10 +148,10 @@ nav:
       - Adding more charts: dashboards/adding-charts.md
       - Notes and layout: dashboards/dashboarding.md
     - Detectors<br /><small>10 minutes</small>:
-      - Creating a Detector: detectors/index.md
+      - Creating a Detector: detectors/intro.md
       - Creating a Muting Rule: detectors/muting.md
-    - Monitoring as Code<br /><small>10 minutes</small>:
-      - Plan, Apply and Destroy: monitoring-as-code/index.md
+    - Monitoring as Code<br><small>10 minutes</small>:
+      - Plan, Apply and Destroy: monitoring-as-code/terraform.md
     - Service Bureau<br /><small>10 minutes</small>:
       - Billing and Usage : servicebureau/billing-and-usage.md
       - Teams : servicebureau/teams.md
@@ -157,7 +163,7 @@ nav:
     - Get Data Out<br /><small>15 minutes</small>:
       - Using Splunk APM: apm/using-apm.md
   - Splunk RUM:
-    - RUM, an introduction: rum/index.md
+    - RUM, an introduction: rum/intro.md
     - Using RUM on your Website: rum/RUM-Setup.md
     - RUM Showcase: rum/RUM-online-boutique.md
     - Analyzing RUM Metrics: rum/RUM-Metrics.md
@@ -166,7 +172,7 @@ nav:
     - Correlation of RUM & APM: rum/RUM-APM.md
   - Splunk Synthetics:
     - Real Browser Checks<br /><small>40 minutes</small>:
-      - Synthetics, an introduction: synthetics/index.md
+      - Synthetics, an introduction: synthetics/intro.md
     - API Checks<br /><small>20 minutes</small>:
       - Introduction: synthetics/api.md
 #  - Splunk On-Call:
