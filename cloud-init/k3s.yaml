@@ -8,38 +8,51 @@ package_update: true
 
 packages:
   - unzip
+  - git
   - shellinabox
   - lynx
   - w3m
+  - gnupg2
+  - docker-compose
+  - podman
+  - python3.9-venv
+  - jq
+
+groups:
+  - docker
+
+system_info:
+  default_user:
+    groups: [docker]
 
 write_files:
   - path: /etc/skel/.profile
     append: true
     content: |
       helm() {
-        if [ -z ${ACCESS_TOKEN+x} ]; then echo "ACCESS_TOKEN is unset. Please export ACCESS_TOKEN=YOUR_TOKEN"; return; fi
-        if [[ ${#ACCESS_TOKEN} < 22 ]]; then echo "ACCESS_TOKEN looks too short. It should be a string of at least 22 characters."; return; fi
-        if [ -z ${REALM+x} ]; then echo "REALM is unset. Please export REALM=YOUR_REALM"; return; fi
-        if [[ ! $REALM  =~ ^(us0|us1|us2|eu0)$ ]]; then echo "REALM is not one of the supported realms. Check that it is one of us0, us1, us2 or eu0."; return; fi
+        if [ -z ${ACCESS_TOKEN+x} ]; then >&2 echo "ACCESS_TOKEN is unset. Please export ACCESS_TOKEN=YOUR_TOKEN"; return; fi
+        if [[ ${#ACCESS_TOKEN} < 22 ]]; then >&2 echo "ACCESS_TOKEN looks too short. It should be a string of at least 22 characters."; return; fi
+        if [ -z ${REALM+x} ]; then >&2 echo "REALM is unset. Please export REALM=YOUR_REALM"; return; fi
+        if [[ ! $REALM  =~ ^(us0|us1|us2|eu0)$ ]]; then >&2 echo "REALM is not one of the supported realms. Check that it is one of us0, us1, us2 or eu0."; return; fi
 
-        echo "Using ACCESS_TOKEN=$ACCESS_TOKEN"
-        echo "Using REALM=$REALM"
+        echo >&2 "Using ACCESS_TOKEN=$ACCESS_TOKEN"
+        echo >&2 "Using REALM=$REALM"
 
         command helm "$@"
       }
 
       terraform() {
-        if [ -z ${ACCESS_TOKEN+x} ]; then echo "ACCESS_TOKEN is unset. Please export ACCESS_TOKEN=YOUR_TOKEN"; return; fi
-        if [ -z ${REALM+x} ]; then echo "REALM is unset. Please export REALM=YOUR_REALM"; return; fi
+        if [ -z ${ACCESS_TOKEN+x} ]; then >&2 echo "ACCESS_TOKEN is unset. Please export ACCESS_TOKEN=YOUR_TOKEN"; return; fi
+        if [ -z ${REALM+x} ]; then >&2 echo "REALM is unset. Please export REALM=YOUR_REALM"; return; fi
 
-        echo "Using ACCESS_TOKEN=$ACCESS_TOKEN"
-        echo "Using REALM=$REALM"
+        echo >&2 "Using ACCESS_TOKEN=$ACCESS_TOKEN"
+        echo >&2 "Using REALM=$REALM"
 
         command terraform "$@"
       }
 
       echo "Waiting for cloud-init status..."
-      if ! /usr/bin/timeout 180 grep -q 'Cloud-init .*finished at' <(tail -f /var/log/cloud-init-output.log); then
+      if ! /usr/bin/timeout 180 grep -q 'Cloud-init .*finished at' <(sudo tail -f /var/log/cloud-init-output.log); then
         echo "Instance setup did not complete after 3 minutes. Please try again.";
       else
         echo "Your instance is ready!";
@@ -51,12 +64,47 @@ write_files:
       fi
       export INSTANCE CLUSTER_NAME
 
-      # Set color prompt
-      export PS1="${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\$INSTANCE\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "
+      # Set prompt
+      export PS1='\u@\h:\w$ '
       export KUBECONFIG=/home/ubuntu/.kube/config
-      alias kc='sudo kubectl'
+      alias kc='kubectl'
+      alias dc='docker-compose'
+      alias d='docker'
       alias gs='git status'
+      alias gb='git branch'
+      alias gco='git checkout'
       alias ..='cd ..'
+      alias docker='podman'
+  - path: /etc/rancher/k3s/registries.yaml
+    permissions: '0600'
+    owner: root:root
+    content: |
+      mirrors:
+        docker.registry:
+          endpoint:
+            - "http://docker.registry:9999"
+  - path: /etc/containers/registries.conf.d/docker.registry.conf
+    permissions: '0644'
+    owner: root:root
+    content: |
+      [[registry]]
+      location="docker.registry:9999"
+      insecure=true
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "insecure-registries" : ["docker.registry:9999"]
+      }
+  - path: /usr/local/bin/setup-docker-registry.sh
+    permissions: '0744'
+    content: |
+      #!/usr/bin/env bash
+      REGISTRY_NAME=docker.registry
+      REGISTRY_PORT=9999
+      NODE_IP=$(ip -o -4 addr | awk '$2 != "lo" { print $4}' | sed -e 's,/[[:digit:]]\+$,,')
+      echo "$NODE_IP $REGISTRY_NAME" | tee -a /etc/hosts
+      echo "$NODE_IP $REGISTRY_NAME" | tee -a /etc/cloud/templates/hosts.debian.tmpl
+      systemctl restart docker
   - path: /usr/local/bin/local-setup.sh
     permissions: "0744"
     content: |
@@ -98,6 +146,7 @@ runcmd:
   # Install Terraform
   - curl -S -OL https://releases.hashicorp.com/terraform/1.0.11/terraform_1.0.11_linux_amd64.zip
   - unzip -qq terraform_1.0.11_linux_amd64.zip -d /usr/local/bin
+  - bash /usr/local/bin/setup-docker-registry.sh
   - bash /usr/local/bin/local-setup.sh
   # Install K3s
   - curl -sfL https://get.k3s.io | sh -
@@ -105,6 +154,8 @@ runcmd:
   - mkdir /home/ubuntu/.kube && kubectl config view --raw > /home/ubuntu/.kube/config
   - chmod 400 /home/ubuntu/.kube/config
   - chown -R ubuntu:ubuntu /home/ubuntu
+  # Deploy private registry
+  - /usr/local/bin/kubectl apply -f /home/ubuntu/workshop/k3s/registry/registry.yaml
   # Configure shellinabox port and disable ssl then restart
   - sed -i 's/SHELLINABOX_PORT=4200/SHELLINABOX_PORT=6501/'  /etc/default/shellinabox
   - sed -i "s/\"--no-beep\"/\"--no-beep --disable-ssl\"/" /etc/default/shellinabox
