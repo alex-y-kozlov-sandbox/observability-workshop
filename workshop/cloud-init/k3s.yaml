@@ -1,0 +1,216 @@
+#cloud-config
+ssh_pwauth: yes
+password: Observability2022!
+chpasswd:
+  expire: false
+
+package_update: true
+
+apt:
+  sources:
+    podman.list:
+      source: |
+        deb [signed-by="/usr/share/keyrings/podman.asc"] http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_20.04/ /
+
+packages:
+  - unzip
+  - git
+  - shellinabox
+  - lynx
+  - w3m
+  - gnupg2
+  - docker-compose
+  - podman
+  - python3.9-venv
+  - jq
+  - maven
+  - openjdk-11-jdk
+
+groups:
+  - docker
+
+system_info:
+  default_user:
+    groups: [docker]
+
+write_files:
+  - path: /etc/skel/.profile
+    append: true
+    content: |
+      helm() {
+        if [ -z ${ACCESS_TOKEN+x} ]; then >&2 echo "ACCESS_TOKEN is unset. Please export ACCESS_TOKEN=YOUR_TOKEN"; return; fi
+        if [[ ${#ACCESS_TOKEN} < 22 ]]; then >&2 echo "ACCESS_TOKEN looks too short. It should be a string of at least 22 characters."; return; fi
+        if [ -z ${REALM+x} ]; then >&2 echo "REALM is unset. Please export REALM=YOUR_REALM"; return; fi
+        if [[ ! $REALM  =~ ^(us0|us1|us2|eu0)$ ]]; then >&2 echo "REALM is not one of the supported realms. Check that it is one of us0, us1, us2 or eu0."; return; fi
+
+        echo >&2 "Using ACCESS_TOKEN=$ACCESS_TOKEN"
+        echo >&2 "Using REALM=$REALM"
+
+        command helm "$@"
+      }
+
+      terraform() {
+        if [ -z ${ACCESS_TOKEN+x} ]; then >&2 echo "ACCESS_TOKEN is unset. Please export ACCESS_TOKEN=YOUR_TOKEN"; return; fi
+        if [ -z ${REALM+x} ]; then >&2 echo "REALM is unset. Please export REALM=YOUR_REALM"; return; fi
+
+        echo >&2 "Using ACCESS_TOKEN=$ACCESS_TOKEN"
+        echo >&2 "Using REALM=$REALM"
+
+        command terraform "$@"
+      }
+
+      echo "Waiting for cloud-init status..."
+      if ! /usr/bin/timeout 180 grep -q 'Cloud-init .*finished at' <(sudo tail -f /var/log/cloud-init-output.log); then
+        echo "Instance setup did not complete after 3 minutes. Please try again.";
+      else
+        echo "Your instance is ready!";
+      fi
+
+      if [ -e /etc/.instance ]; then
+        INSTANCE=$(cat /etc/.instance)
+        CLUSTER_NAME="$INSTANCE-cluster"
+      fi
+      export INSTANCE CLUSTER_NAME
+
+      # Set prompt
+      export PS1='\u@\h:\w$ '
+      export KUBECONFIG=/home/ubuntu/.kube/config
+      alias kc='kubectl'
+      alias dc='docker-compose'
+      alias d='docker'
+      alias gs='git status'
+      alias gb='git branch'
+      alias gco='git checkout'
+      alias ..='cd ..'
+      alias docker='podman'
+  - path: /usr/share/keyrings/podman.asc
+    owner: root:root
+    permissions: '0644'
+    content: |
+      -----BEGIN PGP PUBLIC KEY BLOCK-----
+      Version: GnuPG v1.4.5 (GNU/Linux)
+
+      mQENBFtkV0cBCADStSTCG5qgYtzmWfymHZqxxhfwfS6fdHJcbGUeXsI5dxjeCWhs
+      XarZm6rWZOd5WfSmpXhbKOyM6Ll+6bpSl5ICHLa6fcpizYWEPa8fpg9EGl0cF12G
+      GgVLnnOZ6NIbsoW0LHt2YN0jn8xKVwyPp7KLHB2paZh+KuURERG406GXY/DgCxUx
+      Ffgdelym/gfmt3DSq6GAQRRGHyucMvPYm53r+jVcKsf2Bp6E1XAfqBrD5r0maaCU
+      Wvd7bi0B2Q0hIX0rfDCBpl4rFqvyaMPgn+Bkl6IW37zCkWIXqf1E5eDm/XzP881s
+      +yAvi+JfDwt7AE+Hd2dSf273o3WUdYJGRwyZABEBAAG0OGRldmVsOmt1YmljIE9C
+      UyBQcm9qZWN0IDxkZXZlbDprdWJpY0BidWlsZC5vcGVuc3VzZS5vcmc+iQE+BBMB
+      CAAoBQJfcJJOAhsDBQkIKusHBgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAKCRBN
+      ZDkDdQYKpB0xCACmtCT6ruPiQa4l0DEptZ+u3NNbZfSVGH4fE4hyTjLbzrCxqcoh
+      xJvDKxspuJ85wWFWMtl57+lFFE1KP0AX2XTT+/v2vN1PIfwgOSw3yp2sgWuIXFAi
+      89YSjSh8G0SGAH90A9YFMnTbllzGoGURjSX03iasW3A408ljbDehA6rpS3t3FD7P
+      PnUF6204orYu00Qvc54an/xVJzxupb69MKW5EeK7x8MJnIToT8hIdOdGVD6axsis
+      x+1U71oMK1gBke7p4QPUdhJFpSUd6kT8bcO+7rYouoljFNYkUfwnqtUn7525fkfg
+      uDqqXvOJMpJ/sK1ajHOeehp5T4Q45L/qUCb3iEYEExECAAYFAltkV0cACgkQOzAR
+      t2udZSOoswCdF44NTN09DwhPFbNYhEMb9juP5ykAn0bcELvuKmgDwEwZMrPQkG8t
+      Pu9n
+      =42uC
+      -----END PGP PUBLIC KEY BLOCK-----
+  - path: /etc/rancher/k3s/registries.yaml
+    permissions: '0600'
+    owner: root:root
+    content: |
+      mirrors:
+        docker.registry:
+          endpoint:
+            - "http://docker.registry:9999"
+  - path: /etc/containers/registries.conf.d/docker.registry.conf
+    permissions: '0644'
+    owner: root:root
+    content: |
+      [[registry]]
+      location="docker.registry:9999"
+      insecure=true
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "insecure-registries" : ["docker.registry:9999"]
+      }
+  - path: /usr/local/bin/setup-docker-registry.sh
+    permissions: '0744'
+    content: |
+      #!/usr/bin/env bash
+      REGISTRY_NAME=docker.registry
+      REGISTRY_PORT=9999
+      NODE_IP=$(ip -o -4 addr | awk '$2 != "lo" { print $4}' | sed -e 's,/[[:digit:]]\+$,,')
+      echo "$NODE_IP $REGISTRY_NAME" | tee -a /etc/hosts
+      echo "$NODE_IP $REGISTRY_NAME" | tee -a /etc/cloud/templates/hosts.debian.tmpl
+      systemctl restart docker
+  - path: /usr/local/bin/local-setup.sh
+    permissions: "0744"
+    content: |
+      if [ -e /etc/.instance ]; then
+        INSTANCE=$(cat /etc/.instance)
+      fi
+      if [ -z ${INSTANCE+x} ]; then
+        INSTANCE=$(cat /dev/urandom | base64 | tr -dc 'a-z' | head -c4)
+        sed -i "s/127.0.0.1.*/127.0.0.1 $INSTANCE.local $INSTANCE localhost/" /etc/hosts
+        sed -i "s/127.0.0.1.*/127.0.0.1 $INSTANCE.local $INSTANCE localhost/" /etc/cloud/templates/hosts.debian.tmpl
+        sudo hostnamectl set-hostname $INSTANCE
+        echo $INSTANCE > /etc/.instance
+      fi
+      export INSTANCE
+
+      # Checkout all lab branches
+      git clone https://github.com/signalfx/observability-bootcamp /home/ubuntu/bootcamp
+      export GIT_DIR=/home/ubuntu/bootcamp/.git
+      export GIT_WORK_DIR=/home/ubuntu/bootcamp
+      git branch -a --format '%(refname:lstrip=-1)' | grep -Evi 'main|head|gh-pages' | xargs -n1 git checkout
+      # Switch to main
+      git checkout main
+      # setup milestones for diff
+      for branch in $(git branch --all | grep '^\s*remotes' | grep -v -E '(:?HEAD|master|main|gh-pages)$'); do
+          br="${branch##*/}"
+          mkdir -p /home/ubuntu/milestones/"$br"
+          git archive --format tar "$br"| tar xf - -C /home/ubuntu/milestones/"$br"/
+      done
+      unset GIT_DIR
+      unset GIT_WORK_DIR
+
+runcmd:
+  # Install Helm
+  - curl -s https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+  # Install K9s (Kubernetes UI)
+  - curl -S -OL https://github.com/derailed/k9s/releases/download/v0.25.18/k9s_Linux_x86_64.tar.gz
+  - tar xfz k9s_Linux_x86_64.tar.gz -C /usr/local/bin/ k9s
+  # Download Workshop
+  - export WSVERSION=4.19
+  - 'export WSARCHIVE=$([ "$WSVERSION" = "master" ] && echo "master" || echo "v$WSVERSION")'
+  - curl -s -OL https://github.com/signalfx/observability-workshop/archive/$WSARCHIVE.zip
+  - unzip -qq $WSARCHIVE.zip -d /home/ubuntu/
+  - mkdir /home/ubuntu/workshop
+  - mv /home/ubuntu/observability-workshop-$WSVERSION/workshop/* /home/ubuntu/workshop
+  - rm -rf /home/ubuntu/observability-workshop-$WSVERSION
+  # Download Splunk Observability Cloud Jumpstart
+  - curl -s -L https://github.com/signalfx/signalfx-jumpstart/archive/master.zip -o jumpstart.zip
+  - unzip -qq jumpstart.zip -d /home/ubuntu/
+  - mv /home/ubuntu/signalfx-jumpstart-master /home/ubuntu/signalfx-jumpstart
+  # Configure motd
+  - curl -s https://raw.githubusercontent.com/signalfx/observability-workshop/master/workshop/cloud-init/motd -o /etc/motd
+  - chmod -x /etc/update-motd.d/*
+  # Install Terraform
+  - curl -S -OL https://releases.hashicorp.com/terraform/1.0.11/terraform_1.0.11_linux_amd64.zip
+  - unzip -qq terraform_1.0.11_linux_amd64.zip -d /usr/local/bin
+  - bash /usr/local/bin/setup-docker-registry.sh
+  - bash /usr/local/bin/local-setup.sh
+  # Install K3s
+  - curl -sfL https://get.k3s.io | sh -
+  # Create kube config and set correct permissions on ubuntu user home directory
+  - mkdir /home/ubuntu/.kube && kubectl config view --raw > /home/ubuntu/.kube/config
+  - chmod 400 /home/ubuntu/.kube/config
+  - chown -R ubuntu:ubuntu /home/ubuntu
+  # Deploy private registry
+  - /usr/local/bin/kubectl apply -f /home/ubuntu/workshop/k3s/registry/registry.yaml
+  # Configure shellinabox port and disable ssl then restart
+  - sed -i 's/SHELLINABOX_PORT=4200/SHELLINABOX_PORT=6501/'  /etc/default/shellinabox
+  - sed -i "s/\"--no-beep\"/\"--no-beep --disable-ssl\"/" /etc/default/shellinabox
+  - sudo service shellinabox restart
+  # Install AWS CLI
+  #- curl -s https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip
+  #- unzip -qq awscliv2.zip
+  #- ./aws/install
+  # Install eksctl for AWS/EKS
+  #- curl -s --silent --location https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz | tar xz -C /tmp
+  #- mv /tmp/eksctl /usr/local/bin/
