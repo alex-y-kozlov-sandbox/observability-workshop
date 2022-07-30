@@ -20,8 +20,7 @@ Expand the workshop token that your host has instructed you to use e.g. **O11y-W
 ![Access Token](../../../images/access-token.png)
 
 {{% alert title="Please do not attempt to create your own token" color="warning" %}}
-This will complicate our clean process after the workshop.
-However if you do, please make sure it has only **INGEST** as scope!!
+We have created a Token specifically for this workshop with the appropriate settings for the exercises you will be performing so have allocated it both Ingest and API Permissions.  Best practice in production is to only allocate a single permission to a Token such as Ingest OR API OR RUM and use multiple Tokens where required.
 {{% /alert %}}
 
 You will also need to obtain the name of the Realm[^2] for your Splunk account.  At the top of the side menu, click on your name and select **Account Settings**. The Realm can be found in the middle of the page within the Organizations section.  In this example it is `us0`.
@@ -60,14 +59,14 @@ Install the OpenTelemetry Collector Helm chart with the following commands, do *
 
 {{< tabpane >}}
 {{< tab header="Helm Install" lang="bash" >}}
-    helm install splunk-otel-collector \
-    --set="splunkObservability.realm=$REALM" \
-    --set="splunkObservability.accessToken=$ACCESS_TOKEN" \
-    --set="clusterName=$(hostname)-k3s-cluster" \
-    --set="splunkObservability.logsEnabled=true" \
-    --set="environment=$(hostname)-apm-env" \
-    splunk-otel-collector-chart/splunk-otel-collector \
-    -f ~/workshop/k3s/otel-collector.yaml
+helm install splunk-otel-collector \
+--set="splunkObservability.realm=$REALM" \
+--set="splunkObservability.accessToken=$ACCESS_TOKEN" \
+--set="clusterName=$(hostname)-k3s-cluster" \
+--set="splunkObservability.logsEnabled=true" \
+--set="environment=$(hostname)-apm-env" \
+splunk-otel-collector-chart/splunk-otel-collector \
+-f ~/workshop/k3s/otel-collector.yaml
 {{< /tab >}}
 {{< tab header="Helm Install Output" lang="text" >}}
 Using ACCESS_TOKEN={REDACTED}
@@ -98,7 +97,7 @@ splunk-otel-collector-k8s-cluster-receiver-6956d4446f-gwnd7   0/1     Running   
 
 Ensure there are no errors by tailing the logs from the OpenTelemetry Collector pod. Output should look similar to the log output shown in the Output tab below.
 
-Use the label set by the `helm` install to tail logs (You will need to press ++ctrl+c++ to exit). Or use the installed `k9s` terminal UI for bonus points!
+Use the label set by the `helm` install to tail logs (You will need to press `ctrl+c` to exit). Or use the installed `k9s` terminal UI for bonus points!
 
 {{< tabpane >}}
 {{< tab header="Kubectl Logs" lang="bash" >}}

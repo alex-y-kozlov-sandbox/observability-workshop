@@ -21,7 +21,7 @@ Note the single agent container running per node among the default Kubernetes po
 
 Now switch back to the default cluster node view by selecting the **MAP** tab and select your cluster again.
 
-In the Multipass or AWS/EC2 shell session and change into the `nginx` directory:
+In your AWS/EC2 or Multipass shell session change into the `nginx` directory:
 
 {{< tabpane >}}
 {{< tab header="Change Directory" lang="bash" >}}
@@ -120,7 +120,7 @@ This will start a gentle continuous load on the application.
 
 As you can see from the above screenshot, most of the calls will report a fail, this is expected, as we have not yet deployed the application behind it, however NGINX is reporting on your attempts and you should be able to see those metrics.  
 
-Validate you are seeing those metrics in the UI by going to hamburger icon, top let and select **Dashboards → All Dashboards → NGINX → NGINX Servers**. Using the **Overrides** filter on `k8s.cluster.name:`, find the name of your cluster as returned by `echo $(hostname)-k3s-cluster` in the terminal.
+Validate you are seeing those metrics in the UI by selecting **Dashboards → Built-in Dashboard Groups  → NGINX → NGINX Servers**. Using the **Overrides** filter on `k8s.cluster.name:`, find the name of your cluster as returned by `echo $(hostname)-k3s-cluster` in the terminal.
 
 ![NGINX Dashboard](../../../images/nginx-dashboard.png)
 
